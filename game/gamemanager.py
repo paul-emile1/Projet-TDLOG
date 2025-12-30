@@ -1,12 +1,14 @@
 import numpy as np
 from abc import ABC, abstractmethod
+from typing import Optional
+from game.computer import Computer, classicgame_computers, variante_1_computers
 
 
 class InvalidMove(Exception):
     """Exception levée lorsqu'un coup n'est pas valide."""
     pass
 
-class Gestionnaire(ABC):
+class GameManager(ABC):
     """Classe abstraite du jeu."""
     name: str = "Jeu"
 
@@ -19,6 +21,9 @@ class Gestionnaire(ABC):
         self._draw = False
         self._event = False
         self._message_event = ""
+        self._nb_players : Optional[int] = None
+        self._computer_difficulties : Optional[list[type[Computer]]] = None 
+        self._current_computer_difficulty : Optional[Computer] = None
 
     def check_victory(self, move: tuple[int, int], player: int, n : int) -> bool:
         """Vérifie si le coup joué complète un alignement de n."""
@@ -75,10 +80,37 @@ class Gestionnaire(ABC):
     @property
     def message_event(self): return self._message_event
 
+    @property
+    def nb_players(self) -> Optional[int]:
+        return self._nb_players
+    
+    @nb_players.setter
+    def nb_players(self, value: int) -> None:
+        self._nb_players = value
 
-class ClassicGame(Gestionnaire):
+    @property
+    def computer_difficulties(self) -> Optional[list[type[Computer]]]:
+        return self._computer_difficulties
+    
+    @property
+    def current_computer_difficulty(self) -> Optional[Computer]:
+        return self._current_computer_difficulty
+    
+    @current_computer_difficulty.setter
+    def current_computer_difficulty(self, value: Computer) -> None:
+        self._current_computer_difficulty = value
+
+
+class ClassicGame(GameManager):
     """Variante classique du puissance 4."""
     name = "Puissance 4 Classique"
+
+
+
+    def __init__(self):
+        super().__init__()
+        self._computer_difficulties = classicgame_computers
+        
     
     def play(self, move: tuple[int, int]) -> None:
         _, col = move
@@ -111,14 +143,14 @@ class ClassicGame(Gestionnaire):
 
     
 
-class Variante_1(Gestionnaire):
+class Variante_1(GameManager):
+
+
     name = "Variante 1"
     def __init__(self):
         super().__init__()
         self._message_event = "Vous pouvez retirer un pion de votre adversaire"
-        self._event = False
-
- 
+        self._computer_difficulties = variante_1_computers
 
     def play(self, move: tuple[int, int]) -> None:
 
