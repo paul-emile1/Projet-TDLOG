@@ -1,29 +1,26 @@
 import unittest
 import numpy as np
-
-# On importe tes classes depuis le package game
-from gamemanager import ClassicGame, Variante_1, InvalidMove
+from game.gamemanager import ClassicGame, Variante_1, InvalidMove
 
 class TestClassicGame(unittest.TestCase):
     
     def setUp(self):
         """Initialisation avant chaque test"""
         self.game = ClassicGame()
+        self.game._current_player = 1 
 
     def test_victoire_verticale(self):
         """Vérifie qu'aligner 4 pions verticalement donne la victoire"""
-        # On triche un peu pour préparer le plateau rapidement avec NumPy
         # On met 3 pions rouges (1) dans la colonne 0
         self.game.board[5, 0] = 1
         self.game.board[4, 0] = 1
         self.game.board[3, 0] = 1
         
-        # Le joueur joue le 4ème pion normalement
-        # play prend (row, col) mais pour ClassicGame seul col compte pour l'input
-        # (le row est recalculé par la gravité, on peut mettre 0)
+        # Le joueur joue le 4ème pion
         self.game.play((0, 0)) 
 
         self.assertTrue(self.game.victory, "La victoire devrait être validée")
+        # Le gagnant reste le current_player car le jeu s'arrête
         self.assertEqual(self.game.current_player, 1, "Le gagnant (1) devrait rester le current_player")
 
     def test_colonne_pleine(self):
@@ -31,7 +28,7 @@ class TestClassicGame(unittest.TestCase):
         # On remplit la colonne 0 entièrement
         self.game.board[:, 0] = 1 
         
-        # On essaie de jouer encore dans la colonne 0 -> Doit lever une erreur
+        # On essaie de jouer encore dans la colonne 0 : Doit lever une erreur
         with self.assertRaises(InvalidMove):
             self.game.play((0, 0))
 
@@ -40,6 +37,7 @@ class TestVariante1(unittest.TestCase):
     
     def setUp(self):
         self.game = Variante_1()
+        self.game._current_player = 1
 
     def test_declenchement_event_3_alignes(self):
         """
@@ -63,7 +61,7 @@ class TestVariante1(unittest.TestCase):
         """
         Vérifie le retrait d'un pion adverse et la chute des pions au-dessus.
         """
-        # --- MISE EN SITUATION ---
+        #  MISE EN SITUATION 
         # On force l'état "Event actif" pour le joueur 1
         self.game._event = True
         self.game._current_player = 1
@@ -73,14 +71,13 @@ class TestVariante1(unittest.TestCase):
         self.game.board[5, 0] = -1 
         self.game.board[4, 0] = -1
         
-        # --- ACTION ---
+        #  ACTION 
         # Le joueur 1 décide de retirer le pion du bas (5, 0)
         self.game.play((5, 0))
 
-        # --- VÉRIFICATIONS ---
+        #  VÉRIFICATIONS 
         
         # 1. Le pion du bas a dû disparaître (remplacé par celui du dessus)
-        # Donc la case [5, 0] doit maintenant contenir le pion qui était en [4, 0]
         self.assertEqual(self.game.board[5, 0], -1, "Le pion du dessus aurait dû tomber")
         
         # 2. La case du dessus [4, 0] doit être vide (0) maintenant
