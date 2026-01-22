@@ -1,4 +1,3 @@
-#include "ai_core.h"
 #include <iostream>
 #include <algorithm> // Pour max et min
 #include <limits>    // Pour numeric_limits
