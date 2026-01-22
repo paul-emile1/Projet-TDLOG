@@ -1,316 +1,352 @@
 #include <iostream>
-#include <algorithm> // Pour max et min
-#include <limits>    // Pour numeric_limits
+#include <algorithm>
+#include <limits>
+#include <cstring> 
+#include <vector>
+#include <fstream> 
+
 using namespace std;
 
-
-// Constantes 
+//  CONSTANTES 
 const int ROWS = 6;
 const int COLS = 7;
-const int WIN_SCORE = 1000000000; 
-const int AI_PIECE = 1; // Convention
+const int WIN_SCORE = 100000000; 
+
+const int AI_PIECE = 1; 
 const int PLAYER_PIECE = -1;
 
-
-int idx(int r, int c) {
-    return r * COLS + c;
-}
-
-bool is_valid_location(int* board, int col) {
-    // Renvoie Vrai si la case tout en haut de la colonne (ligne 0) est vide (0).
-    return board[idx(0,col)] == 0; 
-}
+//  UTILITAIRES 
+int idx(int r, int c) { return r * COLS + c; }
+bool is_valid_location(int* board, int col) { return board[idx(0,col)] == 0; }
 
 int get_next_open_row(int* board, int col) {
-    // Parcourt la colonne de bas en haut (de ROWS-1 jusqu'à 0).
-    // Renvoie le premier numéro de ligne où la case est vide (0).
     int i = ROWS - 1;
-    while(i>=0 && board[idx(i,col)] != 0){
-        i -= 1;
-    }
+    while(i>=0 && board[idx(i,col)] != 0) i -= 1;
     return i;
 }
 
-
+//  LOGIQUE VICTOIRE 
 bool check_win(int* board, int player) {
-    
-    // 1. HORIZONTALE (Ta méthode avec compteur)
-    for(int r = 0; r < ROWS; r++){
-        int count = 0; // Remise à zéro au début de chaque ligne
-        for(int c = 0; c < COLS; c++){
-            if(board[idx(r, c)] == player){
-                count++;
-            } else {
-                count = 0;
-            }
-            if(count >= 4) return true;
-        }
+    // Horizontale
+    for(int r=0; r<ROWS; r++)
+        for(int c=0; c<COLS-3; c++)
+            if(board[idx(r,c)]==player && board[idx(r,c+1)]==player && board[idx(r,c+2)]==player && board[idx(r,c+3)]==player) return true;
+    // Verticale
+    for(int c=0; c<COLS; c++)
+        for(int r=0; r<ROWS-3; r++)
+            if(board[idx(r,c)]==player && board[idx(r+1,c)]==player && board[idx(r+2,c)]==player && board[idx(r+3,c)]==player) return true;
+    // Diagonales
+    for(int c=0; c<COLS-3; c++) {
+        for(int r=0; r<ROWS-3; r++)
+            if(board[idx(r,c)]==player && board[idx(r+1,c+1)]==player && board[idx(r+2,c+2)]==player && board[idx(r+3,c+3)]==player) return true;
+        for(int r=3; r<ROWS; r++)
+            if(board[idx(r,c)]==player && board[idx(r-1,c+1)]==player && board[idx(r-2,c+2)]==player && board[idx(r-3,c+3)]==player) return true;
     }
-
-    // 2. VERTICALE 
-    for(int c = 0; c < COLS; c++){
-        int count = 0; // Remise à zéro au début de chaque colonne
-        for(int r = 0; r < ROWS; r++){
-            if(board[idx(r, c)] == player){
-                count++;
-            } else {
-                count = 0;
-            }
-            if(count >= 4) return true;
-        }
-    }
-
-    // 3. DIAGONALE POSITIVE 
-    for (int c = 0; c < COLS - 3; c++) {
-        for (int r = 0; r < ROWS - 3; r++) {
-            if (board[idx(r, c)] == player && 
-                board[idx(r+1, c+1)] == player && 
-                board[idx(r+2, c+2)] == player && 
-                board[idx(r+3, c+3)] == player)
-                return true;
-        }
-    }
-
-    // 4. DIAGONALE NÉGATIVE
-    for (int c = 0; c < COLS - 3; c++) {
-        for (int r = 3; r < ROWS; r++) { // On part de la ligne 3 car on remonte
-            if (board[idx(r, c)] == player && 
-                board[idx(r-1, c+1)] == player && 
-                board[idx(r-2, c+2)] == player && 
-                board[idx(r-3, c+3)] == player)
-                return true;
-        }
-    }
-
     return false;
 }
 
-int evaluate_window(int window[], int piece) {
-    int score = 0;
-    // On définit qui est l'adversaire
-    // Si je suis 1, l'autre est -1. Si je suis -1, l'autre est 1.
-    int opp_piece = (piece == 1) ? -1 : 1; 
-
-    int count_piece = 0;
-    int count_empty = 0;
-    int count_opp = 0;
-
-    // 1. On compte
-    for (int i = 0; i < 4; i++) {
-        if (window[i] == piece) {
-            count_piece++;
-        } else if (window[i] == 0) { // IMPORTANT : 0 c'est vide
-            count_empty++;
-        } else if (window[i] == opp_piece) {
-            count_opp++;
-        }
+bool check_alignment_3_exact(int* board, int player) {
+    // Horizontale
+    for(int r=0; r<ROWS; r++)
+        for(int c=0; c<COLS-2; c++)
+            if(board[idx(r,c)]==player && board[idx(r,c+1)]==player && board[idx(r,c+2)]==player) return true;
+    // Verticale
+    for(int c=0; c<COLS; c++)
+        for(int r=0; r<ROWS-2; r++)
+            if(board[idx(r,c)]==player && board[idx(r+1,c)]==player && board[idx(r+2,c)]==player) return true;
+    // Diagonales
+    for(int c=0; c<COLS-2; c++) {
+        for(int r=0; r<ROWS-2; r++)
+            if(board[idx(r,c)]==player && board[idx(r+1,c+1)]==player && board[idx(r+2,c+2)]==player) return true;
+        for(int r=2; r<ROWS; r++)
+            if(board[idx(r,c)]==player && board[idx(r-1,c+1)]==player && board[idx(r-2,c+2)]==player) return true;
     }
-
-    if (count_piece == 4) {
-        score += 100;
-    } else if (count_piece == 3 && count_empty == 1) {
-        score += 5;
-    } else if (count_piece == 2 && count_empty == 2) {
-        score += 2;
-    }
-
-    if (count_opp == 3 && count_empty == 1) {
-        score -= 4; // On pénalise cette situation
-    }
-
-    return score;
+    return false;
 }
 
-int score_position(int* board, int piece) {
-    int score = 0;
-
-    // --- BONUS : PRÉFÉRENCE POUR LE CENTRE ---
-    // Au Puissance 4, contrôler le centre est stratégique.
-    // On donne des points bonus pour chaque pion dans la colonne centrale (colonne 3).
-    int center_col = COLS / 2; // 3
-    int center_count = 0;
-    for (int r = 0; r < ROWS; r++) {
-        if (board[idx(r, center_col)] == piece) {
-            center_count++;
-        }
+void apply_kill_and_gravity(int* board, int victim_idx) {
+    int c = victim_idx % COLS;
+    int r_removed = victim_idx / COLS;
+    for (int r = r_removed; r > 0; r--) {
+        board[idx(r, c)] = board[idx(r - 1, c)];
     }
-    score += center_count * 3; // +3 points par pion au centre
-
-    // 1. HORIZONTALE
-    for (int r = 0; r < ROWS; r++) {
-        for (int c = 0; c < COLS - 3; c++) {
-            // On crée la fenêtre
-            int window[4] = {
-                board[idx(r, c)], 
-                board[idx(r, c+1)], 
-                board[idx(r, c+2)], 
-                board[idx(r, c+3)]
-            };
-            score += evaluate_window(window, piece);
-        }
-    }
-
-    // 2. VERTICALE
-    for (int c = 0; c < COLS; c++) {
-        for (int r = 0; r < ROWS - 3; r++) {
-            int window[4] = {
-                board[idx(r, c)], 
-                board[idx(r+1, c)], 
-                board[idx(r+2, c)], 
-                board[idx(r+3, c)]
-            };
-            score += evaluate_window(window, piece);
-        }
-    }
-
-    // 3. DIAGONALE POSITIVE (/)
-    for (int r = 0; r < ROWS - 3; r++) {
-        for (int c = 0; c < COLS - 3; c++) {
-            int window[4] = {
-                board[idx(r, c)], 
-                board[idx(r+1, c+1)], 
-                board[idx(r+2, c+2)], 
-                board[idx(r+3, c+3)]
-            };
-            score += evaluate_window(window, piece);
-        }
-    }
-
-    // 4. DIAGONALE NÉGATIVE (\)
-    for (int r = 3; r < ROWS; r++) {
-        for (int c = 0; c < COLS - 3; c++) {
-            int window[4] = {
-                board[idx(r, c)], 
-                board[idx(r-1, c+1)], 
-                board[idx(r-2, c+2)], 
-                board[idx(r-3, c+3)]
-            };
-            score += evaluate_window(window, piece);
-        }
-    }
-
-    return score;
+    board[idx(0, c)] = 0;
 }
 
+// HEURISTIQUE DE SURVIE 
+bool can_player_win_now(int* board, int player, int mode) {
+    int temp_board[42];
+    for(int c=0; c<COLS; c++) {
+        if(is_valid_location(board, c)) {
+            std::memcpy(temp_board, board, 42 * sizeof(int));
+            int row = get_next_open_row(temp_board, c);
+            temp_board[idx(row, c)] = player;
 
+            if(check_win(temp_board, player)) return true;
 
-int minimax(int* board, int depth, int alpha, int beta, bool maximizingPlayer) {
-    
-    // ---  CONDITIONS D'ARRÊT  ---
-
-    //  Est-ce que l'IA a gagné au coup précédent ?
-    if (check_win(board, AI_PIECE)) {
-        return WIN_SCORE;
-    }
-    //  Est-ce que l'Humain a gagné au coup précédent ?
-    if (check_win(board, PLAYER_PIECE)) {
-        return -WIN_SCORE;
-    }
-    //  Est-ce qu'on est au bout de la réflexion (Profondeur 0) ?
-    if (depth == 0) {
-        // On retourne la note heuristique du plateau
-        return score_position(board, AI_PIECE);
-    }
-    
-    // (Optionnel : Ajouter une vérification de match nul si le plateau est plein)
-
-    // ---  JOUEUR MAXIMISANT (C'est le tour de l'IA) ---
-    if (maximizingPlayer) {
-        int maxEval = -numeric_limits<int>::max(); // -Infini
-        
-        // On teste toutes les colonnes
-        for (int c = 0; c < COLS; c++) {
-            if (is_valid_location(board, c)) {
-                // On récupère la ligne où le pion tombe
-                int row = get_next_open_row(board, c);
-                
-                // ON JOUE (Simulation)
-                board[idx(row, c)] = AI_PIECE;
-                
-                // APPEL RÉCURSIF (On passe la main au joueur Min)
-                // depth - 1 on descend dans l'arbre et maximizingPlayer devient false c'est à l'autre de jouer
-                int eval = minimax(board, depth - 1, alpha, beta, false);
-                
-                //  ON ANNULE (Backtracking - Très important !)
-                board[idx(row, c)] = 0;
-                
-                //  Mises à jour
-                maxEval = max(maxEval, eval); // Garde le meilleur score
-                alpha = max(alpha, eval);     // Met à jour le seuil Alpha
-                
-                //  Coupure Alpha-Beta
-                if (beta <= alpha) {
-                    break; // L'adversaire ne nous laissera pas jouer ce coup
+            if(mode == 1 && check_alignment_3_exact(temp_board, player)) {
+                int target_victim = (player == AI_PIECE) ? PLAYER_PIECE : AI_PIECE;
+                for(int i=0; i<42; i++) {
+                    if(temp_board[i] == target_victim) {
+                        int kill_board[42];
+                        std::memcpy(kill_board, temp_board, 42 * sizeof(int));
+                        apply_kill_and_gravity(kill_board, i);
+                        if(check_win(kill_board, player)) return true;
+                    }
                 }
             }
         }
-        return maxEval;
     }
+    return false;
+}
 
-    // --- JOUEUR MINIMISANT (C'est le tour de l'Humain) ---
-    else {
-        int minEval = numeric_limits<int>::max(); // +Infini
-        
+//  EVALUATION 
+int evaluate_window(int window[], int piece, int mode) {
+    int score = 0;
+    int opp_piece = (piece == AI_PIECE) ? PLAYER_PIECE : AI_PIECE; 
+    int count_piece = 0, count_empty = 0, count_opp = 0;
+    for (int i = 0; i < 4; i++) {
+        if (window[i] == piece) count_piece++;
+        else if (window[i] == 0) count_empty++;
+        else if (window[i] == opp_piece) count_opp++;
+    }
+    if (mode == 0) { 
+        if (count_piece == 4) score += 100;
+        else if (count_piece == 3 && count_empty == 1) score += 5;
+        else if (count_piece == 2 && count_empty == 2) score += 2;
+        if (count_opp == 3 && count_empty == 1) score -= 4; 
+    } else { 
+        if (count_piece == 4) score += 10000;
+        else if (count_piece == 3 && count_empty == 1) score += 500; 
+        if (count_opp == 3 && count_empty == 1) score -= 100000; 
+    }
+    return score;
+}
+
+int score_position(int* board, int piece, int mode) {
+    int score = 0;
+    for (int r=0; r<ROWS; r++) for (int c=0; c<COLS-3; c++) {
+        int w[4] = {board[idx(r,c)], board[idx(r,c+1)], board[idx(r,c+2)], board[idx(r,c+3)]};
+        score += evaluate_window(w, piece, mode);
+    }
+    for (int c=0; c<COLS; c++) for (int r=0; r<ROWS-3; r++) {
+        int w[4] = {board[idx(r,c)], board[idx(r+1,c)], board[idx(r+2,c)], board[idx(r+3,c)]};
+        score += evaluate_window(w, piece, mode);
+    }
+    for (int r=0; r<ROWS-3; r++) for (int c=0; c<COLS-3; c++) {
+        int w[4] = {board[idx(r,c)], board[idx(r+1,c+1)], board[idx(r+2,c+2)], board[idx(r+3,c+3)]};
+        score += evaluate_window(w, piece, mode);
+    }
+    for (int r=3; r<ROWS; r++) for (int c=0; c<COLS-3; c++) {
+        int w[4] = {board[idx(r,c)], board[idx(r-1,c+1)], board[idx(r-2,c+2)], board[idx(r-3,c+3)]};
+        score += evaluate_window(w, piece, mode);
+    }
+    return score;
+}
+
+//  MINIMAX 
+int minimax(int* board, int depth, int alpha, int beta, bool maximizingPlayer, int mode) {
+    if (check_win(board, AI_PIECE)) return WIN_SCORE;
+    if (check_win(board, PLAYER_PIECE)) return -WIN_SCORE;
+    if (depth == 0) return score_position(board, AI_PIECE, mode);
+
+    int temp_board[42]; 
+
+    if (maximizingPlayer) {
+        int maxEval = -numeric_limits<int>::max();
         for (int c = 0; c < COLS; c++) {
             if (is_valid_location(board, c)) {
-                int row = get_next_open_row(board, c);
-                
-                // a. L'adversaire JOUE
-                board[idx(row, c)] = PLAYER_PIECE;
-                
-                // b. Récursion (On passe la main à l'IA)
-                // Note : maximizingPlayer devient true
-                int eval = minimax(board, depth - 1, alpha, beta, true);
-                
-                // c. Annulation
-                board[idx(row, c)] = 0;
-                
-                // d. Mises à jour (On cherche le MINIMUM)
-                minEval = min(minEval, eval);
-                beta = min(beta, eval);      // Met à jour le seuil Beta
-                
-                // e. Coupure Alpha-Beta
-                if (beta <= alpha) {
-                    break; // L'IA ne laissera pas l'adversaire jouer ce coup
+                std::memcpy(temp_board, board, 42 * sizeof(int));
+                int row = get_next_open_row(temp_board, c);
+                temp_board[idx(row, c)] = AI_PIECE;
+
+                if (check_win(temp_board, AI_PIECE)) return WIN_SCORE; 
+
+                else if (mode == 1 && check_alignment_3_exact(temp_board, AI_PIECE)) {
+                    int best_kill_score = -numeric_limits<int>::max();
+                    bool can_kill = false;
+                    for(int i=0; i<42; i++) {
+                        if(temp_board[i] == PLAYER_PIECE) {
+                            can_kill = true;
+                            int kill_board[42];
+                            std::memcpy(kill_board, temp_board, 42 * sizeof(int));
+                            apply_kill_and_gravity(kill_board, i);
+                            if (check_win(kill_board, AI_PIECE)) return WIN_SCORE;
+                            int eval = minimax(kill_board, depth - 1, alpha, beta, false, mode);
+                            if (eval > best_kill_score) best_kill_score = eval;
+                        }
+                    }
+                    if (can_kill) {
+                        maxEval = max(maxEval, best_kill_score);
+                        alpha = max(alpha, best_kill_score);
+                        if (beta <= alpha) break;
+                        continue;
+                    }
                 }
+                int eval = minimax(temp_board, depth - 1, alpha, beta, false, mode);
+                maxEval = max(maxEval, eval);
+                alpha = max(alpha, eval);
+                if (beta <= alpha) break;
+            }
+        }
+        return maxEval;
+    } else {
+        int minEval = numeric_limits<int>::max();
+        for (int c = 0; c < COLS; c++) {
+            if (is_valid_location(board, c)) {
+                std::memcpy(temp_board, board, 42 * sizeof(int));
+                int row = get_next_open_row(temp_board, c);
+                temp_board[idx(row, c)] = PLAYER_PIECE;
+
+                if (check_win(temp_board, PLAYER_PIECE)) return -WIN_SCORE; 
+
+                else if (mode == 1 && check_alignment_3_exact(temp_board, PLAYER_PIECE)) {
+                    int worst_kill_score = numeric_limits<int>::max();
+                    bool can_kill = false;
+                    for(int i=0; i<42; i++) {
+                        if(temp_board[i] == AI_PIECE) {
+                            can_kill = true;
+                            int kill_board[42];
+                            std::memcpy(kill_board, temp_board, 42 * sizeof(int));
+                            apply_kill_and_gravity(kill_board, i);
+                            if (check_win(kill_board, PLAYER_PIECE)) return -WIN_SCORE;
+                            int eval = minimax(kill_board, depth - 1, alpha, beta, true, mode);
+                            if (eval < worst_kill_score) worst_kill_score = eval;
+                        }
+                    }
+                    if (can_kill) {
+                        minEval = min(minEval, worst_kill_score);
+                        beta = min(beta, worst_kill_score);
+                        if (beta <= alpha) break;
+                        continue;
+                    }
+                }
+                int eval = minimax(temp_board, depth - 1, alpha, beta, true, mode);
+                minEval = min(minEval, eval);
+                beta = min(beta, eval);
+                if (beta <= alpha) break;
             }
         }
         return minEval;
     }
 }
 
-
-// --- INTERFACE PYTHON (Le Driver) ---
-
 extern "C" {
-    /**
-     * Cette fonction est celle que Python appelle.
-     * Elle teste chaque colonne, lance le minimax, et retourne l'INDEX de la meilleure colonne.
-     */
-    int get_best_move(int* board, int depth) {
+    int get_best_move(int* board, int depth, int mode) {
         
-        int best_col = -1;
-        int best_score = -numeric_limits<int>::max(); // Commence à -Infini
+        // Ordre stratégique : on privilégie le centre
+        int priority_cols[] = {3, 2, 4, 1, 5, 0, 6}; 
 
-        // On parcourt toutes les colonnes possibles
-        for (int c = 0; c < COLS; c++) {
+        // 1. Défense forcée
+        // Si l'adversaire peut gagner au prochain coup, on pare immédiatement
+        for (int i = 0; i < COLS; i++) {
+            int c = priority_cols[i];
+            if (is_valid_location(board, c)) {
+                int temp_board[42];
+                std::memcpy(temp_board, board, 42 * sizeof(int));
+                int row = get_next_open_row(temp_board, c);
+                temp_board[idx(row, c)] = PLAYER_PIECE; 
+
+                // Si l'adversaire gagne ici, on bloque.
+                if (check_win(temp_board, PLAYER_PIECE)) return c; 
+                
+                if (mode == 1 && check_alignment_3_exact(temp_board, PLAYER_PIECE)) {
+                    for(int k=0; k<42; k++) {
+                        if(temp_board[k] == AI_PIECE) {
+                            int k_board[42];
+                            std::memcpy(k_board, temp_board, 42 * sizeof(int));
+                            apply_kill_and_gravity(k_board, k);
+                            if(check_win(k_board, PLAYER_PIECE)) return c;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 2. Attaque immédiate
+        for (int i = 0; i < COLS; i++) {
+            int c = priority_cols[i];
+            if (is_valid_location(board, c)) {
+                int temp_board[42];
+                std::memcpy(temp_board, board, 42 * sizeof(int));
+                int row = get_next_open_row(temp_board, c);
+                temp_board[idx(row, c)] = AI_PIECE;
+                
+                if(check_win(temp_board, AI_PIECE)) return c;
+                if(mode == 1 && check_alignment_3_exact(temp_board, AI_PIECE)) {
+                    for(int k=0; k<42; k++) {
+                        if(temp_board[k] == PLAYER_PIECE) {
+                            int k_board[42];
+                            std::memcpy(k_board, temp_board, 42 * sizeof(int));
+                            apply_kill_and_gravity(k_board, k);
+                            if(check_win(k_board, AI_PIECE)) return c;
+                        }
+                    }
+                }
+            }
+        }
+
+        // 3. Algorithme Minimax
+        int best_col = -1;
+        int best_score = -2000000000;
+
+        // On parcourt les colonnes dans l'ordre de priorité (3, 2, 4...)
+        for (int i = 0; i < COLS; i++) {
+            int c = priority_cols[i];
             
             if (is_valid_location(board, c)) {
+                int temp_board[42];
+                std::memcpy(temp_board, board, 42 * sizeof(int));
+                int row = get_next_open_row(temp_board, c);
+                temp_board[idx(row, c)] = AI_PIECE;
+
+                // Vérification "Suicide" : on ne joue pas si cela permet à l'adversaire de gagner au tour suivant
+                bool suicide = false;
+                if (can_player_win_now(temp_board, PLAYER_PIECE, mode)) {
+                    suicide = true;
+                } else if (mode == 1 && check_alignment_3_exact(temp_board, AI_PIECE)) {
+                    bool safe_kill_found = false;
+                    for(int k=0; k<42; k++) {
+                        if(temp_board[k] == PLAYER_PIECE) {
+                            int kill_board[42];
+                            std::memcpy(kill_board, temp_board, 42 * sizeof(int));
+                            apply_kill_and_gravity(kill_board, k);
+                            if (!can_player_win_now(kill_board, PLAYER_PIECE, mode)) {
+                                safe_kill_found = true; 
+                                break;
+                            }
+                        }
+                    }
+                    if (!safe_kill_found) suicide = true;
+                }
+
+                if (suicide) {
+                    int s = -WIN_SCORE; 
+                    if (s > best_score) { best_score = s; best_col = c; }
+                    continue;
+                }
+
+                // Minimax
+                int score;
+                if (mode == 1 && check_alignment_3_exact(temp_board, AI_PIECE)) {
+                    int max_kill_score = -2000000000;
+                    for(int k=0; k<42; k++) {
+                         if(temp_board[k] == PLAYER_PIECE) {
+                            int kill_board[42];
+                            std::memcpy(kill_board, temp_board, 42 * sizeof(int));
+                            apply_kill_and_gravity(kill_board, k);
+                            if (!can_player_win_now(kill_board, PLAYER_PIECE, mode)) {
+                                int s = minimax(kill_board, depth - 1, -2000000000, 2000000000, false, mode);
+                                if (s > max_kill_score) max_kill_score = s;
+                            }
+                        }
+                    }
+                    score = max_kill_score;
+                } else {
+                    score = minimax(temp_board, depth - 1, -2000000000, 2000000000, false, mode);
+                }
                 
-                // 1. On simule le coup
-                int row = get_next_open_row(board, c);
-                board[idx(row, c)] = AI_PIECE;
-
-                // 2. On demande au Minimax : "Combien vaut ce coup ?"
-                // depth-1 car on vient de jouer un coup
-                // alpha/beta à l'infini pour commencer
-                // false car c'est maintenant au tour de l'adversaire
-                int score = minimax(board, depth - 1, -numeric_limits<int>::max(), numeric_limits<int>::max(), false);
-
-                // 3. On annule (Backtracking)
-                board[idx(row, c)] = 0;
-
-                // 4. Est-ce que c'est le meilleur coup trouvé jusqu'ici ?
+                // Strictement supérieur pour privilégier l'ordre du tableau priority_cols
                 if (score > best_score) {
                     best_score = score;
                     best_col = c;
@@ -318,6 +354,13 @@ extern "C" {
             }
         }
         
+        // Sécurité : si aucun coup n'est trouvé, on prend le premier valide
+        if (best_col == -1) {
+            for (int i = 0; i < COLS; i++) {
+                int c = priority_cols[i];
+                if(is_valid_location(board, c)) return c;
+            }
+        }
         return best_col; 
     }
 }
