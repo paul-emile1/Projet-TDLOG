@@ -61,32 +61,29 @@ class TestVariante1(unittest.TestCase):
         """
         Vérifie le retrait d'un pion adverse et la chute des pions au-dessus.
         """
-        #  MISE EN SITUATION 
         # On force l'état "Event actif" pour le joueur 1
         self.game._event = True
         self.game._current_player = 1
 
         # On place des pions adverses (Joueur -1 / Jaune)
-        # Colonne 0 : Jaune en bas, Jaune au-dessus
         self.game.board[5, 0] = -1 
         self.game.board[4, 0] = -1
         
-        #  ACTION 
         # Le joueur 1 décide de retirer le pion du bas (5, 0)
         self.game.play((5, 0))
 
-        #  VÉRIFICATIONS 
+        # Vérifications 
         
-        # 1. Le pion du bas a dû disparaître (remplacé par celui du dessus)
+        # Le pion du bas a dû disparaître (remplacé par celui du dessus)
         self.assertEqual(self.game.board[5, 0], -1, "Le pion du dessus aurait dû tomber")
         
-        # 2. La case du dessus [4, 0] doit être vide (0) maintenant
+        # La case du dessus [4, 0] doit être vide (0) maintenant
         self.assertEqual(self.game.board[4, 0], 0, "La case libérée par la chute doit être vide")
 
-        # 3. L'événement est fini
+        # L'événement est fini
         self.assertFalse(self.game.event, "L'événement devrait être terminé")
         
-        # 4. C'est au tour de l'adversaire (-1)
+        # C'est au tour de l'adversaire (-1)
         self.assertEqual(self.game.current_player, -1, "La main doit passer à l'adversaire")
 
     def test_retrait_interdit_propre_pion(self):
