@@ -1,6 +1,6 @@
 import sys
 import numpy as np
-from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
+from PyQt6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
                              QPushButton, QLabel, QMessageBox)
 from PyQt6.QtGui import QPainter, QColor, QBrush, QFont
 from PyQt6.QtCore import Qt, QRectF, pyqtSignal, QEventLoop, QTimer
@@ -20,7 +20,7 @@ class BoardWidget(QWidget):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing)
 
-        # Calcul des dimensions dynamiques
+        # On calcule les dimensions dynamiques
         w, h = self.width(), self.height()
         rows, cols = self.board.shape
         size = min(w / cols, h / rows)
@@ -28,10 +28,9 @@ class BoardWidget(QWidget):
         off_x = (w - cols * size) / 2
         off_y = (h - rows * size) / 2
 
-        # Fond
         painter.fillRect(self.rect(), QColor("#34495e"))
 
-        # Dessin des pions
+        # On dessine les pions
         for r in range(rows):
             for c in range(cols):
                 val = self.board[r, c]
@@ -48,7 +47,7 @@ class BoardWidget(QWidget):
 
     def mousePressEvent(self, event):
         if event.button() == Qt.MouseButton.LeftButton:
-            # Conversion Coordonnées Pixel -> Indices Grille
+            # On convertit les coordonnées Pixel -> Indices Grille
             w, h = self.width(), self.height()
             rows, cols = self.board.shape
             size = min(w / cols, h / rows)
@@ -82,7 +81,7 @@ class Interface:
 
         self.window.show()
 
-        # Mécanisme d'attente active (EventLoop)
+        # Mécanisme d'attente active (EventLoop) pour bloquer sans figer
         self.loop = QEventLoop()
         self.result = None
         self._running = True
@@ -129,7 +128,28 @@ class Interface:
 
         return self._wait()
 
-    def send_game(self, player: int, board: np.ndarray) -> Optional[tuple[int]]:
+    def _add_info_bar(self, p1_info: str, p2_info: str):
+        """Helper pour ajouter la barre d'info (stocks) si nécessaire."""
+        if p1_info or p2_info:
+            info_widget = QWidget()
+            info_layout = QHBoxLayout(info_widget)
+            info_layout.setContentsMargins(10, 0, 10, 0)
+
+            # Label Joueur 1 (Gauche - Rouge)
+            lbl_p1 = QLabel(p1_info if p1_info else "")
+            lbl_p1.setStyleSheet("color: #e74c3c; font-weight: bold; font-size: 14px;")
+            lbl_p1.setAlignment(Qt.AlignmentFlag.AlignLeft)
+            info_layout.addWidget(lbl_p1)
+
+            # Label Joueur 2 (Droite - Jaune)
+            lbl_p2 = QLabel(p2_info if p2_info else "")
+            lbl_p2.setStyleSheet("color: #f1c40f; font-weight: bold; font-size: 14px;")
+            lbl_p2.setAlignment(Qt.AlignmentFlag.AlignRight)
+            info_layout.addWidget(lbl_p2)
+
+            self.layout.addWidget(info_widget)
+
+    def send_game(self, player: int, board: np.ndarray, p1_info: str = None, p2_info: str = None) -> Optional[tuple[int]]:
         """Affiche le plateau de jeu et attend une action utilisateur."""
         if not self._running: return None
         self._clean_ui()
@@ -140,6 +160,9 @@ class Interface:
         lbl.setStyleSheet(f"color: {code_couleur}; font-size: 24px; font-weight: bold;")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(lbl)
+
+        # Ajout de la barre d'info si les arguments sont fournis
+        self._add_info_bar(p1_info, p2_info)
 
         board_widget = BoardWidget(board)
         board_widget.cell_cliquee.connect(lambda r, c: self._resume((r, c)))
@@ -153,7 +176,7 @@ class Interface:
 
         return self._wait()
 
-    def refresh_only(self, player: int, board: np.ndarray, message: str = None) -> None:
+    def refresh_only(self, player: int, board: np.ndarray, message: str = None, p1_info: str = None, p2_info: str = None) -> None:
         """Met à jour l'affichage sans attendre d'action."""
         if not self._running: return
         self._clean_ui()
@@ -166,6 +189,8 @@ class Interface:
         lbl.setStyleSheet(f"color: {code_couleur}; font-size: 24px; font-weight: bold;")
         lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.layout.addWidget(lbl)
+
+        self._add_info_bar(p1_info, p2_info)
 
         board_widget = BoardWidget(board)
         self.layout.addWidget(board_widget)
