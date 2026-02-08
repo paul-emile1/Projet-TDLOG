@@ -9,10 +9,10 @@ def test():
         print(f"Erreur : {e}")
         return
 
-    # Création d'un plateau vide
+    # On crée un plateau vide
     board = np.zeros((6, 7), dtype=np.int32)
 
-    # Simulation : L'adversaire a 3 pions alignés, l'IA doit bloquer
+    # Simulation : L'IA a 3 pions alignés, elle doit jouer le coup gagnant
     board[5, 0] = 1 
     board[5, 1] = 1
     board[5, 2] = 1
@@ -21,7 +21,11 @@ def test():
     print(board)
 
     print("\nCalcul du coup (Profondeur 4)...")
-    col = ai.get_best_move(board, depth=4)
+    
+    # On appelle l'IA en mode Classique (0) pour ce test simple
+    # La méthode renvoie désormais un dictionnaire contenant la colonne et l'éventuelle cible
+    move_data = ai.get_best_move(board, depth=4, mode=0)
+    col = move_data['col']
 
     print(f"L'IA a choisi la colonne : {col}")
     
