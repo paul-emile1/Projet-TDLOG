@@ -1,8 +1,3 @@
-/**
- * @file ai_core.cpp
- * @brief Moteur d'IA Puissance 4 - Architecture Buffer & Multi-Variantes
- */
-
 #include <iostream>
 #include <vector>
 #include <limits>
